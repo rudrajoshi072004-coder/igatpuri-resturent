@@ -1,9 +1,11 @@
 "use client"
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MapPin, LocateFixed } from 'lucide-react';
+import { ArrowLeft, MapPin, LocateFixed, Wallet, Banknote, Smartphone } from 'lucide-react';
 import { apiFetch } from "../../lib/api";
 import { useCart } from "../../context/CartContext";
+
+type PaymentMethod = 'COD' | 'UPI_ON_DELIVERY' | 'ONLINE_PLACEHOLDER';
 
 export default function Checkout() {
   const router = useRouter();
@@ -11,7 +13,7 @@ export default function Checkout() {
     name: '', phone: '', address: '', landmark: ''
   });
   const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'UPI_ON_DELIVERY'>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD');
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,11 @@ export default function Checkout() {
     try {
       const placed = await apiFetch<any>("/orders/", { method: "POST", body: JSON.stringify(orderData) });
       clear();
-      router.push(`/order-success?order=${encodeURIComponent(placed.order_number)}`);
+      const params = new URLSearchParams({ order: placed.order_number });
+      if (paymentMethod === "ONLINE_PLACEHOLDER") {
+        params.set("pay", String(Math.round(Number(placed.final_total) || 0)));
+      }
+      router.push(`/order-success?${params.toString()}`);
     } catch (err: any) {
       setError(err?.message || "Error placing order.");
     }
@@ -132,26 +138,45 @@ export default function Checkout() {
 
           <div className="space-y-2">
             <p className="text-sm font-bold text-gray-800">Payment Method</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("COD")}
-                className={`flex-1 py-3 rounded-xl border font-bold ${paymentMethod === "COD" ? "bg-primary text-white border-primary" : "bg-white border-gray-200 text-gray-800"}`}
-              >
-                Cash on Delivery
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("UPI_ON_DELIVERY")}
-                className={`flex-1 py-3 rounded-xl border font-bold ${paymentMethod === "UPI_ON_DELIVERY" ? "bg-primary text-white border-primary" : "bg-white border-gray-200 text-gray-800"}`}
-              >
-                UPI on Delivery
-              </button>
+            <div className="space-y-2">
+              {([
+                { key: "ONLINE_PLACEHOLDER", icon: Smartphone, title: "Pay Online via UPI", desc: "Pay now securely with any UPI app via Razorpay" },
+                { key: "COD", icon: Banknote, title: "Cash on Delivery", desc: "Pay with cash when your order arrives" },
+                { key: "UPI_ON_DELIVERY", icon: Wallet, title: "UPI on Delivery", desc: "Scan & pay the delivery partner on arrival" },
+              ] as { key: PaymentMethod; icon: any; title: string; desc: string }[]).map(({ key, icon: Icon, title, desc }) => {
+                const active = paymentMethod === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPaymentMethod(key)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition ${active ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-gray-200 bg-white hover:border-primary/40"}`}
+                  >
+                    <span className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${active ? "bg-primary text-white" : "bg-gray-100 text-gray-600"}`}>
+                      <Icon size={20} />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-bold text-gray-800 text-sm flex items-center gap-2">
+                        {title}
+                        {key === "ONLINE_PLACEHOLDER" && (
+                          <span className="bg-green-100 text-green-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded">RECOMMENDED</span>
+                        )}
+                      </span>
+                      <span className="block text-xs text-gray-500 mt-0.5">{desc}</span>
+                    </span>
+                    <span className={`h-4 w-4 rounded-full border-2 shrink-0 ${active ? "border-primary bg-primary" : "border-gray-300"}`} />
+                  </button>
+                );
+              })}
             </div>
           </div>
-          
+
           <button type="submit" disabled={loading} className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg shadow-lg mt-4 disabled:opacity-50">
-            {loading ? 'Placing Order...' : 'Place Order'}
+            {loading
+              ? 'Placing Order...'
+              : paymentMethod === "ONLINE_PLACEHOLDER"
+              ? 'Place Order & Pay'
+              : 'Place Order'}
           </button>
         </form>
       </div>

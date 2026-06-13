@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.utils import timezone
 from django.db.models import Count, Sum
 from rest_framework import status, viewsets
@@ -10,6 +11,7 @@ from apps.restaurants.models import Restaurant
 from apps.users.models import User
 from apps.users.permissions import IsAdminUserRole, IsDeliveryBoyRole
 
+from . import razorpay_gateway
 from .models import Order, Payment, PricingConfig, DistanceChargeSlab
 from .serializers import (
     OrderCreateSerializer,

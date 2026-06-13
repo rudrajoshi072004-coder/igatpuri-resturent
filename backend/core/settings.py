@@ -4,6 +4,15 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from a local .env (backend/.env or project root .env)
+# so credentials like Razorpay keys are picked up during `manage.py runserver`.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+    load_dotenv(BASE_DIR.parent / ".env")
+except Exception:
+    pass
+
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-development-key-please-change')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
@@ -108,3 +117,9 @@ SIMPLE_JWT = {
 
 CORS_ALLOW_ALL_ORIGINS = True # For development. Change in production.
 CORS_ALLOW_CREDENTIALS = True
+
+# Razorpay online payment credentials (Dashboard -> Settings -> API Keys).
+# Use Test Mode keys (rzp_test_...) for development. When these are empty the
+# app falls back to the manual razorpay.me payment link.
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', '')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')

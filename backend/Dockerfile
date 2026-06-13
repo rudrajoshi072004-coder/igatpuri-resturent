@@ -1,22 +1,21 @@
-FROM python:3.10-alpine
+FROM python:3.12-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Set work directory
 WORKDIR /app
 
-# Install dependencies
-RUN apk update \
-    && apk add --no-cache postgresql-dev gcc python3-dev musl-dev jpeg-dev zlib-dev \
-    && pip install --upgrade pip
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install python packages
-COPY ./requirements.txt /app/requirements.txt
-RUN pip install -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
-# Copy project
-COPY . /app/
+COPY . .
 
-# Running as root for MVP to avoid local volume permission issues
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+
+ENTRYPOINT ["/app/entrypoint.sh"]
