@@ -76,7 +76,7 @@ export default function RestaurantDetail() {
   const [activeCat, setActiveCat] = useState<number | null>(null);
 
   const { items: cartItems, addItem, setQty, count } = useCart();
-  const sectionRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const sectionRefs = useRef<Record<number, HTMLElement | null>>({});
 
   useEffect(() => {
     async function load() {
