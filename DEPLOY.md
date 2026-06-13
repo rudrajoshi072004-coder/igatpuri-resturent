@@ -85,3 +85,42 @@ docker compose exec backend python manage.py seed_hotel_new_apna
 2. Use strong `SECRET_KEY`, `POSTGRES_PASSWORD`, `JWT_SECRET`
 3. Add your domain/IP to `ALLOWED_HOSTS`
 4. Put a reverse proxy with SSL (Caddy, Traefik, or Certbot) in front of port 80
+
+---
+
+## Deploy on Render
+
+Render expects a **`Dockerfile` in the repo root** — use the all-in-one image at `./Dockerfile`.
+
+### Steps
+
+1. Push code to GitHub (branch `main`).
+2. On [Render](https://render.com) → **New → Web Service** → connect your repo.
+3. Settings:
+   - **Environment:** Docker
+   - **Dockerfile Path:** `Dockerfile` (root)
+   - **Instance type:** at least Starter (512 MB RAM recommended)
+4. Add a **PostgreSQL** database on Render, then set these env vars on the web service:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | *(from Render Postgres — Internal URL)* |
+| `SECRET_KEY` | long random string |
+| `DEBUG` | `False` |
+| `ALLOWED_HOSTS` | `your-app.onrender.com` |
+| `JWT_SECRET` | random string |
+
+5. Click **Deploy**.
+
+The root Dockerfile builds backend + customer app + admin dashboard into **one container**. Nginx listens on Render's `$PORT` and routes:
+
+- `/` → customer app
+- `/admin-dashboard/` → admin dashboard
+- `/api/` → Django API
+
+### Render notes
+
+- First deploy takes ~5–10 min (builds Next.js + Vite + Python).
+- If build runs out of memory, upgrade to a larger instance.
+- Add your `onrender.com` hostname to `ALLOWED_HOSTS` or the API will return 400.
+

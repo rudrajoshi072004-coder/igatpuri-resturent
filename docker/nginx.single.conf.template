@@ -1,0 +1,75 @@
+worker_processes auto;
+pid /tmp/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    sendfile on;
+    keepalive_timeout 65;
+    client_max_body_size 20M;
+
+    upstream backend {
+        server 127.0.0.1:8000;
+    }
+
+    upstream customer_web {
+        server 127.0.0.1:3000;
+    }
+
+    server {
+        listen ${PORT};
+        server_name _;
+
+        location /static/ {
+            alias /app/backend/staticfiles/;
+            expires 7d;
+        }
+
+        location /media/ {
+            alias /app/backend/media/;
+            expires 7d;
+        }
+
+        location /api/ {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /admin/ {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /admin-dashboard/assets/ {
+            alias /var/www/admin/assets/;
+            expires 7d;
+        }
+
+        location /admin-dashboard/ {
+            alias /var/www/admin/;
+            try_files $uri $uri/ /index.html;
+        }
+
+        location / {
+            proxy_pass http://customer_web;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+}
