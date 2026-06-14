@@ -11,6 +11,7 @@ COPY . .
 ARG NEXT_PUBLIC_API_BASE_URL=/api
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 
+RUN mkdir -p public
 RUN npm run build
 
 FROM node:18-alpine AS runner
@@ -21,7 +22,6 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 

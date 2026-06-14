@@ -9,6 +9,7 @@ RUN npm ci
 COPY customer-web/ .
 ARG NEXT_PUBLIC_API_BASE_URL=/api
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+RUN mkdir -p public
 RUN npm run build
 
 # ── 2. Admin web (Vite) ─────────────────────────────────────────
@@ -44,7 +45,6 @@ RUN pip install --no-cache-dir -r /app/backend/requirements.txt gunicorn
 COPY backend/ /app/backend/
 
 # Customer web (Next.js standalone output)
-COPY --from=customer-build /app/public /app/customer-web/public
 COPY --from=customer-build /app/.next/standalone /app/customer-web/
 COPY --from=customer-build /app/.next/static /app/customer-web/.next/static
 
