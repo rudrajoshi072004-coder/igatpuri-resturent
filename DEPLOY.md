@@ -60,7 +60,8 @@ See `.env.example` for all options. Key ones:
 | `SECRET_KEY` | Django secret (change in production) |
 | `POSTGRES_PASSWORD` | Database password |
 | `ALLOWED_HOSTS` | Comma-separated hostnames/IPs |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Online UPI payments (optional) |
+| `RAZORPAY_KEY_ID` | Razorpay **Key ID** (live: `rzp_live_...`) |
+| `RAZORPAY_KEY_SECRET` | Razorpay **Key Secret** (never commit to git) |
 | `APP_PORT` | Host port nginx listens on (default `80`) |
 
 ## Useful commands
@@ -109,6 +110,8 @@ Render expects a **`Dockerfile` in the repo root** — use the all-in-one image 
 | `DEBUG` | `False` |
 | `ALLOWED_HOSTS` | `your-app.onrender.com` |
 | `JWT_SECRET` | random string |
+| `RAZORPAY_KEY_ID` | `rzp_live_...` from Razorpay Dashboard → API Keys |
+| `RAZORPAY_KEY_SECRET` | secret from same page (add only in Render env, not in code) |
 
 5. Click **Deploy**.
 

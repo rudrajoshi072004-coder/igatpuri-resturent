@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MapPin, LocateFixed, Wallet, Banknote, Smartphone } from 'lucide-react';
 import { apiFetch } from "../../lib/api";
+import { openRazorpayCheckout } from "../../lib/razorpay";
 import { useCart } from "../../context/CartContext";
 
 type PaymentMethod = 'COD' | 'UPI_ON_DELIVERY' | 'ONLINE_PLACEHOLDER';
@@ -58,11 +59,38 @@ export default function Checkout() {
     try {
       const placed = await apiFetch<any>("/orders/", { method: "POST", body: JSON.stringify(orderData) });
       clear();
-      const params = new URLSearchParams({ order: placed.order_number });
+
       if (paymentMethod === "ONLINE_PLACEHOLDER") {
-        params.set("pay", String(Math.round(Number(placed.final_total) || 0)));
+        const amount = Math.round(Number(placed.final_total) || 0);
+        try {
+          const paySession = await apiFetch<any>(
+            `/orders/${encodeURIComponent(placed.order_number)}/pay/create/`,
+            { method: "POST" }
+          );
+          const paid = await openRazorpayCheckout({
+            keyId: paySession.key_id,
+            amount: paySession.amount,
+            currency: paySession.currency,
+            orderId: paySession.razorpay_order_id,
+            orderNumber: placed.order_number,
+            customerName: formData.name,
+            customerPhone: formData.phone,
+          });
+          if (paid) {
+            router.push(`/order-success?order=${encodeURIComponent(placed.order_number)}&paid=1`);
+            return;
+          }
+          setError("Payment was not completed. Your order is saved — you can pay from the next screen.");
+          router.push(`/order-success?order=${encodeURIComponent(placed.order_number)}&pay=${amount}`);
+          return;
+        } catch (payErr: any) {
+          setError(payErr?.message || "Could not start Razorpay checkout. Order was placed — pay manually on the next screen.");
+          router.push(`/order-success?order=${encodeURIComponent(placed.order_number)}&pay=${amount}`);
+          return;
+        }
       }
-      router.push(`/order-success?${params.toString()}`);
+
+      router.push(`/order-success?order=${encodeURIComponent(placed.order_number)}`);
     } catch (err: any) {
       setError(err?.message || "Error placing order.");
     }

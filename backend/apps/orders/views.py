@@ -54,6 +54,76 @@ class OrderViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=False, methods=["get"], url_path="payment/config", permission_classes=[AllowAny])
+    def payment_config(self, request):
+        enabled = razorpay_gateway.is_configured()
+        return Response({
+            "enabled": enabled,
+            "key_id": settings.RAZORPAY_KEY_ID if enabled else "",
+        })
+
+    @action(detail=False, methods=["post"], url_path=r"(?P<order_number>[^/]+)/pay/create", permission_classes=[AllowAny])
+    def pay_create(self, request, order_number=None):
+        order = Order.objects.filter(order_number=order_number).first()
+        if not order:
+            return Response({"detail": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+        if order.payment_method != Order.PaymentMethod.ONLINE_PLACEHOLDER:
+            return Response({"detail": "Online payment not applicable for this order"}, status=status.HTTP_400_BAD_REQUEST)
+        if order.payment_status == Order.PaymentStatus.COLLECTED:
+            return Response({"detail": "Order is already paid"}, status=status.HTTP_400_BAD_REQUEST)
+        if not razorpay_gateway.is_configured():
+            return Response({"detail": "Razorpay is not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        amount_paise = int(order.final_total * 100)
+        if amount_paise < 100:
+            return Response({"detail": "Order amount is too small for online payment"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            rz = razorpay_gateway.create_order(
+                amount_paise,
+                order.order_number,
+                {"order_number": order.order_number, "customer_phone": order.customer_phone},
+            )
+        except razorpay_gateway.RazorpayError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response({
+            "key_id": settings.RAZORPAY_KEY_ID,
+            "razorpay_order_id": rz["id"],
+            "amount": amount_paise,
+            "currency": "INR",
+            "order_number": order.order_number,
+        })
+
+    @action(detail=False, methods=["post"], url_path=r"(?P<order_number>[^/]+)/pay/verify", permission_classes=[AllowAny])
+    def pay_verify(self, request, order_number=None):
+        order = Order.objects.filter(order_number=order_number).first()
+        if not order:
+            return Response({"detail": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        rz_order_id = request.data.get("razorpay_order_id")
+        rz_payment_id = request.data.get("razorpay_payment_id")
+        rz_signature = request.data.get("razorpay_signature")
+
+        if not razorpay_gateway.verify_signature(rz_order_id, rz_payment_id, rz_signature):
+            return Response({"detail": "Payment verification failed"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if order.payment_status != Order.PaymentStatus.COLLECTED:
+            order.payment_status = Order.PaymentStatus.COLLECTED
+            order.save(update_fields=["payment_status", "updated_at"])
+            Payment.objects.create(
+                order=order,
+                amount=order.final_total,
+                method=order.payment_method,
+                status=Order.PaymentStatus.COLLECTED,
+            )
+
+        return Response({
+            "detail": "Payment verified",
+            "order_number": order.order_number,
+            "payment_status": order.payment_status,
+        })
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def public_pricing_config(request):

@@ -4,7 +4,15 @@ import Link from "next/link";
 import { Smartphone, CheckCircle2 } from "lucide-react";
 import { buildRazorpayLink } from "../../lib/payment";
 
-export default function OrderSuccessClient({ order, payAmount }: { order: string; payAmount?: string }) {
+export default function OrderSuccessClient({
+  order,
+  payAmount,
+  paid = false,
+}: {
+  order: string;
+  payAmount?: string;
+  paid?: boolean;
+}) {
   if (!order) {
     return (
       <div className="p-10 text-center">
@@ -26,7 +34,14 @@ export default function OrderSuccessClient({ order, payAmount }: { order: string
         <p className="text-gray-600 mb-2">Your order number is:</p>
         <p className="text-2xl font-black text-primary mb-6">{order}</p>
 
-        {needsPayment && (
+        {paid && (
+          <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-left">
+            <p className="text-sm font-bold text-green-800">Payment received via Razorpay</p>
+            <p className="text-xs text-green-700 mt-1">Your online payment was verified successfully.</p>
+          </div>
+        )}
+
+        {!paid && needsPayment && (
           <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-left">
             <p className="text-sm text-gray-700">Amount to pay</p>
             <p className="text-3xl font-black text-gray-900">₹{amount}</p>
