@@ -13,6 +13,10 @@ http {
     keepalive_timeout 65;
     client_max_body_size 20M;
 
+    # Render/proxy stacks can send large cookie/header chains; defaults are too small.
+    client_header_buffer_size 16k;
+    large_client_header_buffers 8 32k;
+
     upstream backend {
         server 127.0.0.1:8000;
     }
