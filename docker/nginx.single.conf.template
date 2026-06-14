@@ -63,6 +63,10 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
+        location = /admin-dashboard {
+            return 301 /admin-dashboard/;
+        }
+
         location /admin-dashboard/assets/ {
             alias /var/www/admin/assets/;
             expires 7d;
@@ -70,7 +74,7 @@ http {
 
         location /admin-dashboard/ {
             alias /var/www/admin/;
-            try_files $uri $uri/ /index.html;
+            try_files $uri $uri/ /admin-dashboard/index.html;
         }
 
         location / {
