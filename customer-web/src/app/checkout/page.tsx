@@ -7,6 +7,11 @@ import { useCart } from "../../context/CartContext";
 
 type PaymentMethod = 'COD' | 'UPI_ON_DELIVERY' | 'ONLINE_PLACEHOLDER';
 
+function roundCoord(value: number | null): number | null {
+  if (value == null) return null;
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
 export default function Checkout() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -43,11 +48,11 @@ export default function Checkout() {
       customer_phone: formData.phone,
       customer_address: formData.address,
       customer_landmark: formData.landmark,
-      customer_latitude: coords.lat,
-      customer_longitude: coords.lng,
-      restaurant: cart[0]?.restaurantId,
+      customer_latitude: roundCoord(coords.lat),
+      customer_longitude: roundCoord(coords.lng),
+      restaurant: Number(cart[0]?.restaurantId),
       payment_method: paymentMethod,
-      items: cart.map(item => ({ menu_item: item.id, quantity: item.quantity }))
+      items: cart.map(item => ({ menu_item: Number(item.id), quantity: Number(item.quantity) }))
     };
 
     try {

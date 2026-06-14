@@ -18,9 +18,21 @@ export async function apiFetch<T>(
     } catch {
       // ignore
     }
-    const message = detail?.detail || `Request failed (${res.status})`;
+    const message = formatApiError(detail) || `Request failed (${res.status})`;
     throw new Error(message);
   }
   return res.json() as Promise<T>;
+}
+
+function formatApiError(detail: any): string | null {
+  if (!detail) return null;
+  if (typeof detail === "string") return detail;
+  if (detail.detail) return String(detail.detail);
+  if (Array.isArray(detail)) return detail.map(String).join(", ");
+  const parts = Object.entries(detail).flatMap(([key, value]) => {
+    const messages = Array.isArray(value) ? value : [value];
+    return messages.map((msg) => `${key}: ${msg}`);
+  });
+  return parts.length ? parts.join(" · ") : null;
 }
 

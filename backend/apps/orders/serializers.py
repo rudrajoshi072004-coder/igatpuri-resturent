@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from rest_framework import serializers
 
@@ -69,6 +69,16 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "order_status",
             "created_at",
         ]
+
+    def validate_customer_latitude(self, value):
+        if value is None:
+            return value
+        return Decimal(str(value)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+    def validate_customer_longitude(self, value):
+        if value is None:
+            return value
+        return Decimal(str(value)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
 
     def validate(self, attrs):
         items = attrs.get("items") or []
