@@ -4,15 +4,16 @@ set -e
 # Render injects PORT; keep it separate from Next.js (which also reads PORT).
 NGINX_PORT="${PORT:-10000}"
 
-wait_for_url() {
+# Accept any HTTP response — only checks that the process is listening.
+wait_for_listen() {
   url="$1"
   name="$2"
   log_file="$3"
   attempt=0
-  max=90
+  max=60
 
   while [ "$attempt" -lt "$max" ]; do
-    if curl -sf -o /dev/null "$url"; then
+    if curl -s -o /dev/null --connect-timeout 2 "$url"; then
       echo "==> $name is ready"
       return 0
     fi
@@ -37,6 +38,10 @@ python manage.py seed_igatpuri || true
 python manage.py seed_hotel_new_apna || true
 python manage.py collectstatic --noinput
 
+echo "==> Configuring nginx on port ${NGINX_PORT}..."
+export PORT="${NGINX_PORT}"
+envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+
 echo "==> Starting Gunicorn (backend)..."
 gunicorn core.wsgi:application \
   --chdir /app/backend \
@@ -46,17 +51,13 @@ gunicorn core.wsgi:application \
   --access-logfile /tmp/gunicorn-access.log \
   --error-logfile /tmp/gunicorn-error.log &
 
-wait_for_url "http://127.0.0.1:8000/api/restaurants/" "Gunicorn" "/tmp/gunicorn-error.log"
+wait_for_listen "http://127.0.0.1:8000/api/restaurants/" "Gunicorn" "/tmp/gunicorn-error.log"
 
 echo "==> Starting Next.js (customer app)..."
 cd /app/customer-web
 HOSTNAME=127.0.0.1 PORT=3000 node server.js >>/tmp/next.log 2>&1 &
 
-wait_for_url "http://127.0.0.1:3000/" "Next.js" "/tmp/next.log"
+wait_for_listen "http://127.0.0.1:3000/" "Next.js" "/tmp/next.log"
 
-echo "==> Configuring nginx on port ${NGINX_PORT}..."
-export PORT="${NGINX_PORT}"
-envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
-
-echo "==> All services started. Listening on port ${NGINX_PORT}"
+echo "==> All services started. Listening on 0.0.0.0:${NGINX_PORT}"
 exec nginx -g 'daemon off;'

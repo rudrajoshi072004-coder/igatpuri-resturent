@@ -15,7 +15,17 @@ except Exception:
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-development-key-please-change')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+
+# Django ignores ALLOWED_HOSTS=['*'] when DEBUG=False — set sensible production defaults.
+_allowed_raw = os.environ.get('ALLOWED_HOSTS', '').strip()
+if not _allowed_raw or _allowed_raw == '*':
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com']
+else:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_raw.split(',') if h.strip()]
+
+for _internal in ('127.0.0.1', 'localhost'):
+    if _internal not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_internal)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
