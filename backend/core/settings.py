@@ -73,11 +73,17 @@ WSGI_APPLICATION = 'core.wsgi.application'
 import dj_database_url
 
 # Prefer DATABASE_URL when set (Docker/production), otherwise use local SQLite for easy dev.
-DATABASES = {
-    "default": dj_database_url.config(
-        default=os.environ.get("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
-    )
-}
+_db_default = dj_database_url.config(
+    default=os.environ.get("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+)
+if _db_default.get("ENGINE") == "django.db.backends.postgresql":
+    _db_default.setdefault("CONN_MAX_AGE", 60)
+    db_url = os.environ.get("DATABASE_URL", "")
+    if "render.com" in db_url or os.environ.get("DB_SSLMODE"):
+        _db_default.setdefault("OPTIONS", {})
+        _db_default["OPTIONS"]["sslmode"] = os.environ.get("DB_SSLMODE", "require")
+
+DATABASES = {"default": _db_default}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
